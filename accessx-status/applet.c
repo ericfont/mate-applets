@@ -377,20 +377,34 @@ static guint _bk_timeout = 0;
 
 static gboolean timer_reset_slowkeys_image(gpointer user_data)
 {
-	GdkPixbuf* pixbuf = gtk_widget_render_icon_pixbuf(GTK_WIDGET(user_data), SLOWKEYS_IDLE_ICON, icon_size_spec);
+	cairo_surface_t *surface;
+	gint scale;
 
-	gtk_image_set_from_pixbuf(GTK_IMAGE(user_data), pixbuf);
+	GdkPixbuf *pixbuf = gtk_widget_render_icon_pixbuf(GTK_WIDGET(user_data), SLOWKEYS_IDLE_ICON, icon_size_spec);
+
+	scale = gtk_widget_get_scale_factor (GTK_WIDGET (user_data));
+	surface = gdk_cairo_surface_create_from_pixbuf (pixbuf, scale, NULL);
 	g_object_unref(pixbuf);
+
+	gtk_image_set_from_surface (GTK_IMAGE(user_data), surface);
+	cairo_surface_destroy (surface);
 
 	return FALSE;
 }
 
 static gboolean timer_reset_bouncekeys_image(gpointer user_data)
 {
+	cairo_surface_t *surface;
+	gint scale;
+
 	GdkPixbuf* pixbuf = gtk_widget_render_icon_pixbuf(GTK_WIDGET(user_data), BOUNCEKEYS_ICON, icon_size_spec);
 
-	gtk_image_set_from_pixbuf(GTK_IMAGE(user_data), pixbuf);
+	scale = gtk_widget_get_scale_factor (GTK_WIDGET (user_data));
+	surface = gdk_cairo_surface_create_from_pixbuf (pixbuf, scale, NULL);
 	g_object_unref(pixbuf);
+
+	gtk_image_set_from_surface(GTK_IMAGE(user_data), surface);
+	cairo_surface_destroy (surface);
 
 	return FALSE;
 }
@@ -430,10 +444,12 @@ static GdkPixbuf* accessx_status_applet_get_glyph_pixbuf(AccessxStatusApplet* sa
 	return glyph_pixbuf;
 }
 
-static GdkPixbuf* accessx_status_applet_slowkeys_image(AccessxStatusApplet* sapplet, XkbAccessXNotifyEvent* event)
+static cairo_surface_t* accessx_status_applet_slowkeys_image(AccessxStatusApplet* sapplet, XkbAccessXNotifyEvent* event)
 {
 	GdkPixbuf* ret_pixbuf;
+	cairo_surface_t *surface;
 	GdkWindow* window;
+	gint scale;
 	gboolean is_idle = TRUE;
 	gchar* stock_id = SLOWKEYS_IDLE_ICON;
 	GtkStyle* style = gtk_widget_get_style(GTK_WIDGET(sapplet->applet));
@@ -501,15 +517,21 @@ static GdkPixbuf* accessx_status_applet_slowkeys_image(AccessxStatusApplet* sapp
 		g_object_unref(glyph_pixbuf);
 	}
 
-	return ret_pixbuf;
+	scale = gtk_widget_get_scale_factor (GTK_WIDGET (sapplet->applet));
+	surface = gdk_cairo_surface_create_from_pixbuf (ret_pixbuf, scale, NULL);
+	g_object_unref (ret_pixbuf);
+
+	return surface;
 }
 
-static GdkPixbuf* accessx_status_applet_bouncekeys_image(AccessxStatusApplet* sapplet, XkbAccessXNotifyEvent* event)
+static cairo_surface_t* accessx_status_applet_bouncekeys_image(AccessxStatusApplet* sapplet, XkbAccessXNotifyEvent* event)
 {
 	GtkStyle* style;
 	GdkColor fg, bg;
 	GdkPixbuf* icon_base = NULL;
 	GdkPixbuf* tmp_pixbuf;
+	cairo_surface_t *surface;
+	gint scale;
 	/* Note to translators: the first letter of the alphabet, not the indefinite article */
 	gchar* glyphstring = N_("a");
 	gchar* stock_id = ACCESSX_BASE_ICON;
@@ -545,16 +567,25 @@ static GdkPixbuf* accessx_status_applet_bouncekeys_image(AccessxStatusApplet* sa
 
 		g_object_unref(glyph_pixbuf);
 	}
-	return icon_base;
+
+	scale = gtk_widget_get_scale_factor (GTK_WIDGET (sapplet->applet));
+	surface = gdk_cairo_surface_create_from_pixbuf (icon_base, scale, NULL);
+	g_object_unref (icon_base);
+
+	return surface;
 }
 
-static GdkPixbuf* accessx_status_applet_mousekeys_image(AccessxStatusApplet* sapplet, XkbStateNotifyEvent* event)
+static cairo_surface_t* accessx_status_applet_mousekeys_image(AccessxStatusApplet* sapplet, XkbStateNotifyEvent* event)
 {
 	GdkPixbuf* mouse_pixbuf = NULL, *button_pixbuf, *dot_pixbuf, *tmp_pixbuf;
+	cairo_surface_t *surface;
 	gchar* which_dot = MOUSEKEYS_DOT_LEFT;
+	gint scale;
+
 	tmp_pixbuf = gtk_widget_render_icon_pixbuf(GTK_WIDGET(sapplet->applet), MOUSEKEYS_BASE_ICON, icon_size_spec);
 	mouse_pixbuf = gdk_pixbuf_copy(tmp_pixbuf);
 	g_object_unref(tmp_pixbuf);
+
 	/* composite in the buttons */
 	if (mouse_pixbuf && event && event->ptr_buttons)
 	{
@@ -590,7 +621,11 @@ static GdkPixbuf* accessx_status_applet_mousekeys_image(AccessxStatusApplet* sap
 
 	gdk_pixbuf_composite(dot_pixbuf, mouse_pixbuf, 0, 0, gdk_pixbuf_get_width(dot_pixbuf), gdk_pixbuf_get_height(dot_pixbuf), 0.0, 0.0, 1.0, 1.0, GDK_INTERP_NEAREST, 255);
 
-	return mouse_pixbuf;
+	scale = gtk_widget_get_scale_factor (GTK_WIDGET (sapplet->applet));
+	surface = gdk_cairo_surface_create_from_pixbuf (mouse_pixbuf, scale, NULL);
+	g_object_unref (mouse_pixbuf);
+
+	return surface;
 }
 
 
@@ -642,23 +677,23 @@ static void accessx_status_applet_update(AccessxStatusApplet* sapplet, AccessxSt
 
 	if ((notify_type & ACCESSX_STATUS_SLOWKEYS) && (event != NULL))
 	{
-		GdkPixbuf* pixbuf = accessx_status_applet_slowkeys_image(sapplet, &event->accessx);
-		gtk_image_set_from_pixbuf(GTK_IMAGE(sapplet->slowfoo), pixbuf);
-		g_object_unref(pixbuf);
+		cairo_surface_t* surface = accessx_status_applet_slowkeys_image(sapplet, &event->accessx);
+		gtk_image_set_from_surface(GTK_IMAGE(sapplet->slowfoo), surface);
+		cairo_surface_destroy(surface);
 	}
 
 	if ((notify_type & ACCESSX_STATUS_BOUNCEKEYS) && (event != NULL))
 	{
-		GdkPixbuf* pixbuf = accessx_status_applet_bouncekeys_image(sapplet, &event->accessx);
-		gtk_image_set_from_pixbuf(GTK_IMAGE(sapplet->bouncefoo), pixbuf);
-		g_object_unref(pixbuf);
+		cairo_surface_t* surface = accessx_status_applet_bouncekeys_image(sapplet, &event->accessx);
+		gtk_image_set_from_surface(GTK_IMAGE(sapplet->bouncefoo), surface);
+		cairo_surface_destroy(surface);
 	}
 
 	if ((notify_type & ACCESSX_STATUS_MOUSEKEYS) && (event != NULL))
 	{
-		GdkPixbuf* pixbuf = accessx_status_applet_mousekeys_image(sapplet, &event->state);
-		gtk_image_set_from_pixbuf(GTK_IMAGE(sapplet->mousefoo),  pixbuf);
-		g_object_unref(pixbuf);
+		cairo_surface_t* surface = accessx_status_applet_mousekeys_image(sapplet, &event->state);
+		gtk_image_set_from_surface(GTK_IMAGE(sapplet->mousefoo),  surface);
+		cairo_surface_destroy(surface);
 	}
 
 	if (notify_type & ACCESSX_STATUS_ENABLED)
@@ -1057,7 +1092,7 @@ static AccessxStatusApplet* create_applet(MatePanelApplet* applet)
 	GtkWidget* box;
 	GtkWidget* stickyfoo;
 	AtkObject* atko;
-	GdkPixbuf* pixbuf;
+	cairo_surface_t* surface;
 	gint large_toolbar_pixels;
 
 	g_set_application_name(_("AccessX Status"));
@@ -1095,9 +1130,9 @@ static AccessxStatusApplet* create_applet(MatePanelApplet* applet)
 	}
 
 	accessx_applet_add_stock_icons(sapplet, box);
-	pixbuf = accessx_status_applet_mousekeys_image(sapplet, NULL);
-	sapplet->mousefoo = gtk_image_new_from_pixbuf(pixbuf);
-	g_object_unref(pixbuf);
+	surface = accessx_status_applet_mousekeys_image(sapplet, NULL);
+	sapplet->mousefoo = gtk_image_new_from_surface(surface);
+	cairo_surface_destroy(surface);
 	gtk_widget_hide(sapplet->mousefoo);
 
 	sapplet->shift_indicator = gtk_image_new_from_stock(SHIFT_KEY_ICON, icon_size_spec);
@@ -1115,14 +1150,14 @@ static AccessxStatusApplet* create_applet(MatePanelApplet* applet)
 	sapplet->alt_graph_indicator = gtk_image_new_from_stock(ALTGRAPH_KEY_ICON, icon_size_spec);
 	gtk_widget_set_sensitive(sapplet->alt_graph_indicator, FALSE);
 
-	pixbuf = accessx_status_applet_slowkeys_image(sapplet, NULL);
-	sapplet->slowfoo = gtk_image_new_from_pixbuf(pixbuf);
-	g_object_unref(pixbuf);
+	surface = accessx_status_applet_slowkeys_image(sapplet, NULL);
+	sapplet->slowfoo = gtk_image_new_from_surface(surface);
+	cairo_surface_destroy(surface);
 	gtk_widget_hide(sapplet->slowfoo);
 
-	pixbuf = accessx_status_applet_bouncekeys_image(sapplet, NULL);
-	sapplet->bouncefoo = gtk_image_new_from_pixbuf(pixbuf);
-	g_object_unref(pixbuf);
+	surface = accessx_status_applet_bouncekeys_image(sapplet, NULL);
+	sapplet->bouncefoo = gtk_image_new_from_surface(surface);
+	cairo_surface_destroy(surface);
 	gtk_widget_hide(sapplet->bouncefoo);
 
 	sapplet->idlefoo = gtk_image_new_from_stock(ACCESSX_APPLET, icon_size_spec);
