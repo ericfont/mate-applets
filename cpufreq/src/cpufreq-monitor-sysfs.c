@@ -202,19 +202,8 @@ cpufreq_monitor_sysfs_run (CPUFreqMonitor *monitor)
 	
 	g_free (path);
 
-	if (g_ascii_strcasecmp (governor, "userspace") == 0) {
-		path = g_strdup_printf (CPUFREQ_SYSFS_BASE_PATH,
-					cpu, monitor_sysfs_files[SCALING_SETSPEED]);
-	} else if (g_ascii_strcasecmp (governor, "powersave") == 0) {
-		path = g_strdup_printf (CPUFREQ_SYSFS_BASE_PATH,
-					cpu, monitor_sysfs_files[SCALING_MIN]);
-	} else if (g_ascii_strcasecmp (governor, "performance") == 0) {
-		path = g_strdup_printf (CPUFREQ_SYSFS_BASE_PATH,
-					cpu, monitor_sysfs_files[SCALING_MAX]);
-	} else { /* Ondemand, Conservative, ... */
-		path = g_strdup_printf (CPUFREQ_SYSFS_BASE_PATH,
-					cpu, monitor_sysfs_files[SCALING_CUR_FREQ]);
-	}
+	path = g_strdup_printf (CPUFREQ_SYSFS_BASE_PATH,
+				cpu, monitor_sysfs_files[SCALING_CUR_FREQ]);
 
 	frequency = cpufreq_sysfs_read (path, &error);
 	if (!frequency) {
